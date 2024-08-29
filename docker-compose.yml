@@ -1,0 +1,6 @@
+﻿services:
+  opendeadlock:
+    image: opendeadlock
+    build:
+      context: .
+      dockerfile: OpenDeadlock/Dockerfile
