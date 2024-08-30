@@ -23,12 +23,23 @@ public class DeadlockClient
     private bool _disconnecting;
     private string? _guardData;
 
+    public DeadlockClient(string username, string password, string guardData) : this(username, password)
+    {
+        _guardData = guardData;
+    }
+
     public DeadlockClient(string username, string password)
     {
+        DebugLog.AddListener(new SimpleConsoleDebugListener());
+        DebugLog.Enabled = true;
+
         _username = username;
         _password = password;
 
-        _client = new SteamClient();
+        _client = new SteamClient
+        {
+            DebugNetworkListener = new NetHookNetworkListener()
+        };
 
         _user = _client.GetHandler<SteamUser>();
         _gameCoordinator = _client.GetHandler<SteamGameCoordinator>();
@@ -114,11 +125,12 @@ public class DeadlockClient
 
     public async Task<CMsgClientToGCGetGlobalMatchHistoryResponse?> GetGlobalMatchHistory(uint cursor = 0)
     {
-        var msg = new ClientGCMsgProtobuf<CMsgClientToGCGetGlobalMatchHistory>((uint)EGCCitadelClientMessages
+        var message = new ClientGCMsgProtobuf<CMsgClientToGCGetGlobalMatchHistory>((uint)EGCCitadelClientMessages
             .k_EMsgClientToGCGetGlobalMatchHistory);
-        msg.Body.cursor = cursor;
+        message.Body.cursor = cursor;
+
         return await SendAndReceiveWithJob<CMsgClientToGCGetGlobalMatchHistory,
-            CMsgClientToGCGetGlobalMatchHistoryResponse>(msg);
+            CMsgClientToGCGetGlobalMatchHistoryResponse>(message);
     }
 
     public async Task<CMsgClientToGCSpectateLobbyResponse?> SpectateLobby(ulong lobbyId)
@@ -239,8 +251,6 @@ public class DeadlockClient
 
     private async void OnGCMessage(SteamGameCoordinator.MessageCallback callback)
     {
-        Console.WriteLine("Got GC Message {0}", callback.Message);
-
         var messageMap = new Dictionary<uint, Action<IPacketGCMsg>?>
         {
             { (uint)EGCBaseClientMsg.k_EMsgGCClientWelcome, OnClientWelcome },
